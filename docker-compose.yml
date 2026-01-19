@@ -1,0 +1,18 @@
+services:
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    
+    image: fastmcp-remote-python:latest
+    container_name: mcp_remote_python_server
+    ports:
+      - "8081:8080"
+    
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD","curl","-f","http://localhost:8081/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
