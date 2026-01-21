@@ -1,4 +1,3 @@
-
 # Remote MCP Python Server
 
 This project implements a **Model Context Protocol (MCP)** server using the **FastMCP** framework. It is designed as a high-performance, remote-capable capability layer for LLMs, optimized for containerized orchestration via Docker and Kubernetes.
@@ -7,7 +6,8 @@ This project implements a **Model Context Protocol (MCP)** server using the **Fa
 
 * **Remote Transport:** Uses **Streamable HTTP (SSE)** via FastMCP v2.0+ for networked LLM interactions.
 * **Stateless & Scalable:** Configured with `stateless_http=True` and `json_response=True` for Horizontal Pod Autoscaling (HPA).
-* **Orchestration Ready:** Includes manifests for **Minikube** and **Kubernetes** deployment.
+* **Orchestration Ready:** Includes manifests for **Minikube** and **Kubernetes** deployment with 3-replica redundancy.
+* **Ingress Integration:** Support for custom domain routing (`mcp.local`) via NGINX Ingress Controller.
 * **Production Hardened:** Follows enterprise patterns for resource isolation and tool discovery.
 
 ## 🛠️ Tools & Resources
@@ -26,7 +26,7 @@ This project implements a **Model Context Protocol (MCP)** server using the **Fa
 
 ### 1. Local (Docker Compose)
 
-Best for rapid development.
+Best for rapid development and testing.
 
 ```bash
 docker-compose up --build -d
@@ -35,31 +35,62 @@ docker-compose up --build -d
 
 *Endpoint: `http://localhost:8081/mcp*`
 
-### 2. Kubernetes (Minikube)
+### 2. Kubernetes (Minikube with Ingress)
 
-Best for simulating production scaling and resilience.
+Best for simulating production scaling and domain-based routing.
+
+**Step 1: Enable Ingress and Build Image**
 
 ```bash
-# Set shell to minikube docker
+minikube addons enable ingress
 eval $(minikube docker-env)
-
-# Build & Deploy
 docker build -t fastmcp-remote-python:v1 .
-kubectl apply -f mcp-k8s.yaml
-
-# Get Access URL
-minikube service python-mcp-service --url
 
 ```
+
+**Step 2: Apply Manifests**
+
+```bash
+kubectl apply -f mcp-k8s.yaml
+
+```
+
+**Step 3: Map Local Domain**
+Get your Minikube IP using `minikube ip`, then add it to `/etc/hosts`:
+
+```text
+<MINIKUBE_IP>  mcp.local
+
+```
+
+*Endpoint: `http://mcp.local/mcp*`
 
 ---
 
 ## 📡 Usage & Verification
 
+### Automated Testing (Python Client)
+
+The `test_client.py` supports both environments.
+
+**Test Local Docker:**
+
+```bash
+python3 test_client.py
+
+```
+
+**Test K8s Ingress:**
+
+```bash
+python3 test_client.py ingress
+
+```
+
 ### Manual API Verification (curl)
 
 ```bash
-curl -X POST http://localhost:8081/mcp \
+curl -X POST http://mcp.local/mcp \
      -H "Content-Type: application/json" \
      -H "Accept: application/json" \
      -d '{
@@ -74,22 +105,14 @@ curl -X POST http://localhost:8081/mcp \
 
 ```
 
-### Automated Testing (Python)
-
-Use the included test client for a quick health check:
-
-```bash
-python3 test_client.py
-
-```
-
 ---
 
 ## 🏗️ Project Structure
 
-* `remote_server.py`: FastMCP entry point with stateless HTTP enabled.
-* `test_client.py`: Python script for JSON-RPC tool verification.
-* `mcp-k8s.yaml`: Kubernetes Deployment (3 replicas) and Service manifests.
+* `remote_server.py`: FastMCP entry point with stateless HTTP and JSON response enabled.
+* `test_client.py`: Python script for dual-mode (Local/Ingress) JSON-RPC tool verification.
+* `mcp-k8s.yaml`: Kubernetes Deployment (3 replicas), ClusterIP Service, and Ingress manifests.
 * `Dockerfile` & `docker-compose.yml`: Containerization and local orchestration.
+* `requirements.txt`: Project dependencies (fastmcp).
 
 ---
