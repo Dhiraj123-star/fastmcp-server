@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment 
+metadata:
+  name: python-mcp
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: python-mcp
+  template:
+    metadata:
+      labels:
+        app: python-mcp
+    spec:
+      containers:
+        - name: python-m
+          image: fastmcp-remote-python:v1
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service 
+metadata:
+  name: python-mcp-service
+spec:
+  selector:
+    app: python-mcp
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: NodePort
