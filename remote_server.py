@@ -4,6 +4,7 @@ mcp = FastMCP(name="Remote MCP Example",stateless_http=True)
 
 @mcp.tool
 def greet(name:str)->str:
+    """greet the user by name"""
     return f"Hello, {name}!"
 
 

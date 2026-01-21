@@ -37,4 +37,27 @@ spec:
     - protocol: TCP
       port: 80
       targetPort: 8080
-  type: NodePort
+  type: ClusterIP
+
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress 
+metadata:
+  name: mcp-ingress
+  annotations: 
+    nginx.ingress.kubernetes.io/rewrite-target: /
+
+spec:
+  rules:
+    - host: mcp.local
+      http: 
+        paths:
+          - path: / 
+            pathType: Prefix
+            backend:
+              service: 
+                name: python-mcp-service
+                port:
+                  number: 80
+                  
