@@ -1,80 +1,62 @@
 
 # Remote MCP Python Server
 
-This project implements a **Model Context Protocol (MCP)** server using the **FastMCP** framework. It is designed to be a high-performance, remote-capable capability layer that allows Large Language Models (LLMs) to interact with enterprise-grade Python tools and resources via a secure, standardized interface.
+This project implements a **Model Context Protocol (MCP)** server using the **FastMCP** framework. It is designed as a high-performance, remote-capable capability layer for LLMs, optimized for containerized orchestration via Docker and Kubernetes.
 
 ## 🚀 Features
 
-* **Remote Transport:** Uses **Streamable HTTP (SSE)** to allow connections over a network, making it suitable for cloud and Kubernetes deployments.
-* **Stateless Execution:** Configured with `stateless_http=True` to support Horizontal Pod Autoscaling (HPA) and load balancing.
-* **FastMCP Architecture:** Optimized for low latency and high-frequency agent actions.
-* **Dockerized:** Fully containerized using a `python-slim` base image for portability and reproducible deployments.
-* **Enterprise Ready:** Built-in support for standardized tool discovery and resource sharing.
+* **Remote Transport:** Uses **Streamable HTTP (SSE)** via FastMCP v2.0+ for networked LLM interactions.
+* **Stateless & Scalable:** Configured with `stateless_http=True` and `json_response=True` for Horizontal Pod Autoscaling (HPA).
+* **Orchestration Ready:** Includes manifests for **Minikube** and **Kubernetes** deployment.
+* **Production Hardened:** Follows enterprise patterns for resource isolation and tool discovery.
 
 ## 🛠️ Tools & Resources
 
 ### Tools
 
-* **`greet`**: A core demonstration tool that takes a `name` string and returns a structured greeting.
+* **`greet`**: Returns a structured greeting string.
 
 ### Resources
 
-* **`resource://system/status`**: A read-only resource providing metadata about the server's version, status, and environment.
+* **`resource://system/status`**: Metadata regarding server version and environment.
 
 ---
 
-## 📦 Getting Started
+## 📦 Deployment Options
 
-### Prerequisites
+### 1. Local (Docker Compose)
 
-* [Docker](https://docs.docker.com/get-docker/)
-* [Docker Compose](https://docs.docker.com/compose/install/)
+Best for rapid development.
 
-### Installation & Deployment
-
-1. **Clone the repository:**
-```bash
-git clone <your-repo-url>
-cd fastmcp-server
-
-```
-
-
-2. **Build and Start with Docker Compose:**
 ```bash
 docker-compose up --build -d
 
 ```
 
+*Endpoint: `http://localhost:8081/mcp*`
 
-3. **Verify the Server:**
-The server will be available at `http://localhost:8081/mcp`.
+### 2. Kubernetes (Minikube)
 
----
+Best for simulating production scaling and resilience.
 
-## 📡 Usage & Integration
+```bash
+# Set shell to minikube docker
+eval $(minikube docker-env)
 
-### Connecting via MCP Clients
+# Build & Deploy
+docker build -t fastmcp-remote-python:v1 .
+kubectl apply -f mcp-k8s.yaml
 
-To use this server with an MCP-compatible host (like Claude Desktop or Cursor), add the following to your configuration:
-
-```json
-{
-  "mcpServers": {
-    "remote-python-server": {
-      "url": "http://localhost:8081/mcp",
-      "transport": "http"
-    }
-  }
-}
+# Get Access URL
+minikube service python-mcp-service --url
 
 ```
 
-### Manual API Verification
+---
 
-Since the server uses `stateless_http` and `json_response` mode, you can verify it directly via `curl`.
+## 📡 Usage & Verification
 
-**Command:**
+### Manual API Verification (curl)
 
 ```bash
 curl -X POST http://localhost:8081/mcp \
@@ -92,14 +74,22 @@ curl -X POST http://localhost:8081/mcp \
 
 ```
 
+### Automated Testing (Python)
+
+Use the included test client for a quick health check:
+
+```bash
+python3 test_client.py
+
+```
+
 ---
 
 ## 🏗️ Project Structure
 
-* `remote_server.py`: The main entry point using FastMCP.
-* `Dockerfile`: Multi-stage build for the Python environment.
-* `docker-compose.yml`: Local orchestration and port mapping.
-* `requirements.txt`: Project dependencies (FastMCP).
+* `remote_server.py`: FastMCP entry point with stateless HTTP enabled.
+* `test_client.py`: Python script for JSON-RPC tool verification.
+* `mcp-k8s.yaml`: Kubernetes Deployment (3 replicas) and Service manifests.
+* `Dockerfile` & `docker-compose.yml`: Containerization and local orchestration.
 
 ---
-
