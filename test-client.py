@@ -2,6 +2,10 @@ import requests
 import json
 import sys
 from urllib.parse import urlparse, urlunparse
+import urllib3
+
+# Supress only the InsecureRequestWarning from urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning) 
 
 def test_health_endpoint(base_url):
     """Verifies the K8s health check endpoint returns 200 OK"""
@@ -13,7 +17,7 @@ def test_health_endpoint(base_url):
     
     print(f"--- Verifying Health Check: {health_url} ---")
     try:
-        response = requests.get(health_url, timeout=5)
+        response = requests.get(health_url, timeout=5,verify=False)
         if response.status_code == 200:
             print(f"✅ Health Check Passed: {response.json()}\n")
         else:
@@ -24,7 +28,7 @@ def test_health_endpoint(base_url):
 def test_greet_tool(name, use_ingress=False):
     # Determine base URL
     if use_ingress:
-        base_url = "http://mcp.local/mcp"
+        base_url = "https://mcp.local/mcp"
     else:
         # Default for local Docker Desktop / Compose
         base_url = "http://localhost:8081/mcp"
@@ -50,7 +54,7 @@ def test_greet_tool(name, use_ingress=False):
     }
 
     try:
-        response = requests.post(base_url, headers=headers, json=payload)
+        response = requests.post(base_url, headers=headers, json=payload,verify=False)
         response.raise_for_status()
         
         data = response.json()
@@ -71,4 +75,3 @@ if __name__ == "__main__":
     ingress_mode = len(sys.argv) > 1 and sys.argv[1].lower() == "ingress"
     
     test_greet_tool(user_name, use_ingress=ingress_mode)
-    
