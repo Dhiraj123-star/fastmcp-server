@@ -61,8 +61,14 @@ metadata:
   name: mcp-ingress
   annotations: 
     nginx.ingress.kubernetes.io/rewrite-target: /
+    # Force redirect from http to https
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
 
 spec:
+  tls:
+    - hosts:
+      - mcp.local
+      secretName: mcp-tls-secret 
   rules:
     - host: mcp.local
       http: 
