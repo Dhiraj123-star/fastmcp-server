@@ -6,19 +6,19 @@ This project implements a **Model Context Protocol (MCP)** server using the **Fa
 
 * **Remote Transport:** Uses **Streamable HTTP (SSE)** via FastMCP v2.0+ for networked LLM interactions.
 * **Stateless & Scalable:** Configured with `stateless_http=True` and `json_response=True` for Horizontal Pod Autoscaling (HPA).
-* **Orchestration Ready:** Includes manifests for **Minikube** and **Kubernetes** deployment with 3-replica redundancy.
+* **Self-Healing:** Includes **Liveness and Readiness probes** to ensure Kubernetes automatically restarts unhealthy pods.
+* **Custom Routing:** Implements a dedicated `/health` endpoint using `@mcp.custom_route` for infrastructure monitoring.
 * **Ingress Integration:** Support for custom domain routing (`mcp.local`) via NGINX Ingress Controller.
-* **Production Hardened:** Follows enterprise patterns for resource isolation and tool discovery.
 
 ## 🛠️ Tools & Resources
 
 ### Tools
 
-* **`greet`**: Returns a structured greeting string.
+* **`greet`**: A tool that returns a structured greeting string based on a provided name.
 
 ### Resources
 
-* **`resource://system/status`**: Metadata regarding server version and environment.
+* **`resource://status`**: A system resource providing a simple health status.
 
 ---
 
@@ -71,7 +71,7 @@ Get your Minikube IP using `minikube ip`, then add it to `/etc/hosts`:
 
 ### Automated Testing (Python Client)
 
-The `test_client.py` supports both environments.
+The `test_client.py` uses robust URL parsing to verify both the infrastructure health and the MCP tool logic.
 
 **Test Local Docker:**
 
@@ -88,6 +88,15 @@ python3 test_client.py ingress
 ```
 
 ### Manual API Verification (curl)
+
+Verify the health endpoint directly:
+
+```bash
+curl http://mcp.local/health
+
+```
+
+Verify a tool call:
 
 ```bash
 curl -X POST http://mcp.local/mcp \
@@ -109,10 +118,9 @@ curl -X POST http://mcp.local/mcp \
 
 ## 🏗️ Project Structure
 
-* `remote_server.py`: FastMCP entry point with stateless HTTP and JSON response enabled.
-* `test_client.py`: Python script for dual-mode (Local/Ingress) JSON-RPC tool verification.
-* `mcp-k8s.yaml`: Kubernetes Deployment (3 replicas), ClusterIP Service, and Ingress manifests.
+* `remote_server.py`: FastMCP entry point with custom health routes and stateless settings.
+* `test_client.py`: Python script for dual-mode (Local/Ingress) validation.
+* `mcp-k8s.yaml`: K8s manifests including **Deployment** (3 replicas + Probes), **Service**, and **Ingress**.
 * `Dockerfile` & `docker-compose.yml`: Containerization and local orchestration.
-* `requirements.txt`: Project dependencies (fastmcp).
 
 ---
