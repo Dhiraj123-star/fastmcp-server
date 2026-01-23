@@ -1,13 +1,18 @@
 import requests
 import json
 import sys
+from urllib.parse import urlparse, urlunparse
 
 def test_health_endpoint(base_url):
     """Verifies the K8s health check endpoint returns 200 OK"""
-    health_url = f"{base_url.replace('/mcp', '')}/health"
+    parsed = urlparse(base_url)
+    
+    # Correctly extracting the scheme string and netloc string
+    # components: (scheme, netloc, path, params, query, fragment)
+    health_url = urlunparse((parsed.scheme, parsed.netloc, '/health', '', '', ''))
+    
     print(f"--- Verifying Health Check: {health_url} ---")
     try:
-        # Note: /health is a standard route, so it doesn't need MCP JSON-RPC headers
         response = requests.get(health_url, timeout=5)
         if response.status_code == 200:
             print(f"✅ Health Check Passed: {response.json()}\n")
@@ -17,16 +22,17 @@ def test_health_endpoint(base_url):
         print(f"❌ Health Check Error: {e}\n")
 
 def test_greet_tool(name, use_ingress=False):
-    # LOCAL: Use localhost:8081 (Docker/Compose)
-    # INGRESS: Use mcp.local (Minikube Ingress)
+    # Determine base URL
     if use_ingress:
         base_url = "http://mcp.local/mcp"
     else:
+        # Default for local Docker Desktop / Compose
         base_url = "http://localhost:8081/mcp"
 
-    # First, test the infrastructure health
+    # 1. Run the health check first
     test_health_endpoint(base_url)
 
+    # 2. Run the tool call
     print(f"--- Testing Tool Call: {base_url} ---")
     headers = {
         "Content-Type": "application/json",
@@ -60,5 +66,9 @@ def test_greet_tool(name, use_ingress=False):
 
 if __name__ == "__main__":
     user_name = "Dhiraj"
+    
+    # Check if 'ingress' was passed as a command line argument
     ingress_mode = len(sys.argv) > 1 and sys.argv[1].lower() == "ingress"
+    
     test_greet_tool(user_name, use_ingress=ingress_mode)
+    
