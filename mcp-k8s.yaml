@@ -13,9 +13,9 @@ spec:
         app: python-mcp
     spec:
       containers:
-        - name: python-m
-          image: fastmcp-remote-python:v1
-          imagePullPolicy: Never
+        - name: python-mcp
+          image: dhiraj918106/fastmcp-server:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
           # Health Monitoring Probes
