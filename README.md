@@ -7,6 +7,7 @@ This project implements a **Model Context Protocol (MCP)** server using the **Fa
 * **Remote Transport:** Uses **Streamable HTTP (SSE)** via FastMCP v2.0+ for networked LLM interactions.
 * **Stateless & Scalable:** Configured with `stateless_http=True` and `json_response=True` for Horizontal Pod Autoscaling (HPA).
 * **Self-Healing:** Includes **Liveness and Readiness probes** to ensure Kubernetes automatically restarts unhealthy pods.
+* **Secure Communication:** HTTPS enabled via **Self-Signed SSL Certificates** and NGINX Ingress TLS termination.
 * **Custom Routing:** Implements a dedicated `/health` endpoint using `@mcp.custom_route` for infrastructure monitoring.
 * **Ingress Integration:** Support for custom domain routing (`mcp.local`) via NGINX Ingress Controller.
 
@@ -35,35 +36,46 @@ docker-compose up --build -d
 
 *Endpoint: `http://localhost:8081/mcp*`
 
-### 2. Kubernetes (Minikube with Ingress)
+### 2. Kubernetes (Minikube with SSL/TLS)
 
-Best for simulating production scaling and domain-based routing.
+Best for simulating production scaling and encrypted domain-based routing.
 
-**Step 1: Enable Ingress and Build Image**
+**Step 1: Generate Self-Signed Certificates**
 
 ```bash
-minikube addons enable ingress
-eval $(minikube docker-env)
-docker build -t fastmcp-remote-python:v1 .
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout mcp-selfsigned.key \
+  -out mcp-selfsigned.crt \
+  -subj "/CN=mcp.local/O=MCP-Dev"
 
 ```
 
-**Step 2: Apply Manifests**
+**Step 2: Create Kubernetes Secret & Enable Ingress**
 
 ```bash
+minikube addons enable ingress
+kubectl create secret tls mcp-tls-secret --key mcp-selfsigned.key --cert mcp-selfsigned.crt
+
+```
+
+**Step 3: Build & Deploy**
+
+```bash
+eval $(minikube docker-env)
+docker build -t fastmcp-remote-python:v1 .
 kubectl apply -f mcp-k8s.yaml
 
 ```
 
-**Step 3: Map Local Domain**
-Get your Minikube IP using `minikube ip`, then add it to `/etc/hosts`:
+**Step 4: Map Local Domain**
+Add your Minikube IP to `/etc/hosts`:
 
 ```text
 <MINIKUBE_IP>  mcp.local
 
 ```
 
-*Endpoint: `http://mcp.local/mcp*`
+*Secure Endpoint: `https://mcp.local/mcp*`
 
 ---
 
@@ -71,16 +83,16 @@ Get your Minikube IP using `minikube ip`, then add it to `/etc/hosts`:
 
 ### Automated Testing (Python Client)
 
-The `test_client.py` uses robust URL parsing to verify both the infrastructure health and the MCP tool logic.
+The `test_client.py` handles SSL verification bypass for self-signed certificates.
 
-**Test Local Docker:**
+**Test Local Docker (HTTP):**
 
 ```bash
 python3 test_client.py
 
 ```
 
-**Test K8s Ingress:**
+**Test K8s Ingress (HTTPS):**
 
 ```bash
 python3 test_client.py ingress
@@ -89,17 +101,19 @@ python3 test_client.py ingress
 
 ### Manual API Verification (curl)
 
-Verify the health endpoint directly:
+Use the `-k` flag to allow self-signed certificates:
+
+Verify the health endpoint:
 
 ```bash
-curl http://mcp.local/health
+curl -k https://mcp.local/health
 
 ```
 
 Verify a tool call:
 
 ```bash
-curl -X POST http://mcp.local/mcp \
+curl -k -X POST https://mcp.local/mcp \
      -H "Content-Type: application/json" \
      -H "Accept: application/json" \
      -d '{
@@ -119,8 +133,8 @@ curl -X POST http://mcp.local/mcp \
 ## 🏗️ Project Structure
 
 * `remote_server.py`: FastMCP entry point with custom health routes and stateless settings.
-* `test_client.py`: Python script for dual-mode (Local/Ingress) validation.
-* `mcp-k8s.yaml`: K8s manifests including **Deployment** (3 replicas + Probes), **Service**, and **Ingress**.
-* `Dockerfile` & `docker-compose.yml`: Containerization and local orchestration.
+* `test_client.py`: Python script with `urllib.parse` and SSL bypass for validation.
+* `mcp-k8s.yaml`: K8s manifests including **Deployment** (Probes + Resources), **Service**, and **Ingress (TLS)**.
+* `mcp-selfsigned.crt/key`: SSL certificates (Keep these secure and out of version control).
 
 ---
