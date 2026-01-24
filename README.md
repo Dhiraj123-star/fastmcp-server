@@ -8,7 +8,7 @@ This project implements a **Model Context Protocol (MCP)** server using the **Fa
 * **Stateless & Scalable:** Configured with `stateless_http=True` and `json_response=True` for Horizontal Pod Autoscaling (HPA).
 * **Self-Healing:** Includes **Liveness and Readiness probes** to ensure Kubernetes automatically restarts unhealthy pods.
 * **Secure Communication:** HTTPS enabled via **Self-Signed SSL Certificates** and NGINX Ingress TLS termination.
-* **Custom Routing:** Implements a dedicated `/health` endpoint using `@mcp.custom_route` for infrastructure monitoring.
+* **CI/CD Ready:** Integrated with **GitHub Actions** for automated builds and push to **Docker Hub**.
 * **Ingress Integration:** Support for custom domain routing (`mcp.local`) via NGINX Ingress Controller.
 
 ## 🛠️ Tools & Resources
@@ -36,9 +36,9 @@ docker-compose up --build -d
 
 *Endpoint: `http://localhost:8081/mcp*`
 
-### 2. Kubernetes (Minikube with SSL/TLS)
+### 2. Kubernetes (Minikube with Docker Hub)
 
-Best for simulating production scaling and encrypted domain-based routing.
+Best for simulating production scaling and encrypted domain-based routing using remote images.
 
 **Step 1: Generate Self-Signed Certificates**
 
@@ -50,7 +50,7 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 
 ```
 
-**Step 2: Create Kubernetes Secret & Enable Ingress**
+**Step 2: Create Secrets & Enable Ingress**
 
 ```bash
 minikube addons enable ingress
@@ -58,11 +58,10 @@ kubectl create secret tls mcp-tls-secret --key mcp-selfsigned.key --cert mcp-sel
 
 ```
 
-**Step 3: Build & Deploy**
+**Step 3: Deploy to Kubernetes**
+The manifest is configured to pull the latest image from `dhiraj918106/fastmcp-remote-python`.
 
 ```bash
-eval $(minikube docker-env)
-docker build -t fastmcp-remote-python:v1 .
 kubectl apply -f mcp-k8s.yaml
 
 ```
@@ -79,20 +78,36 @@ Add your Minikube IP to `/etc/hosts`:
 
 ---
 
+## ⚙️ CI/CD Workflow
+
+The project uses GitHub Actions (`.github/workflows/deploy.yml`) to automate the build process.
+
+1. **Push to `main**`: Triggers the workflow.
+2. **Build & Push**: Image is built and pushed to `dhiraj918106/fastmcp-remote-python:latest`.
+3. **Manual Cluster Update**: To pull the fresh image into your local Minikube:
+```bash
+kubectl rollout restart deployment python-mcp
+
+```
+
+
+
+---
+
 ## 📡 Usage & Verification
 
 ### Automated Testing (Python Client)
 
-The `test_client.py` handles SSL verification bypass for self-signed certificates.
+The `test_client.py` handles SSL verification bypass for self-signed certificates and validates infrastructure health.
 
-**Test Local Docker (HTTP):**
+**Test Local Docker:**
 
 ```bash
 python3 test_client.py
 
 ```
 
-**Test K8s Ingress (HTTPS):**
+**Test K8s Ingress:**
 
 ```bash
 python3 test_client.py ingress
@@ -101,30 +116,14 @@ python3 test_client.py ingress
 
 ### Manual API Verification (curl)
 
-Use the `-k` flag to allow self-signed certificates:
-
-Verify the health endpoint:
-
 ```bash
+# Verify Health
 curl -k https://mcp.local/health
 
-```
-
-Verify a tool call:
-
-```bash
+# Verify Tool
 curl -k -X POST https://mcp.local/mcp \
      -H "Content-Type: application/json" \
-     -H "Accept: application/json" \
-     -d '{
-       "jsonrpc": "2.0",
-       "id": "1",
-       "method": "tools/call",
-       "params": {
-         "name": "greet",
-         "arguments": {"name": "Dhiraj"}
-       }
-     }'
+     -d '{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"greet","arguments":{"name":"Dhiraj"}}}'
 
 ```
 
@@ -132,9 +131,10 @@ curl -k -X POST https://mcp.local/mcp \
 
 ## 🏗️ Project Structure
 
-* `remote_server.py`: FastMCP entry point with custom health routes and stateless settings.
-* `test_client.py`: Python script with `urllib.parse` and SSL bypass for validation.
-* `mcp-k8s.yaml`: K8s manifests including **Deployment** (Probes + Resources), **Service**, and **Ingress (TLS)**.
-* `mcp-selfsigned.crt/key`: SSL certificates (Keep these secure and out of version control).
+* `.github/workflows/`: CI/CD pipeline definitions.
+* `remote_server.py`: FastMCP entry point with custom health routes.
+* `test_client.py`: Python script for environment validation.
+* `mcp-k8s.yaml`: Deployment (pulling from Docker Hub), Service, and TLS Ingress.
+* `.gitignore`: Configured to exclude `.key`, `.crt`, and `__pycache__`.
 
 ---
